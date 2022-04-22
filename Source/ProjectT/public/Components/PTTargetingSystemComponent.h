@@ -1,0 +1,234 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "PTTargetingSystemComponent.generated.h"
+
+/**
+ * 현재 Target에서 다음 Target이 존재하는 방향을 나타내느 enum 클래스입니다.
+ */
+UENUM(BlueprintType)
+enum class EPTTargetDirection : uint8
+{
+	TargetDirection_Left		UMETA(DisplayName = "Left"),
+	TargetDirection_Right		UMETA(DisplayName = "Right")
+};
+
+/**
+ * 입력하는 장치를 나타내는 enum 클래스입니다.
+ */
+UENUM(BlueprintType)
+enum class EPTInputMode : uint8
+{
+	InputMode_Mouse			UMETA(DisplayName = "Mouse"),
+	InputMode_Gamepad		UMETA(DisplayName = "Gamepad")
+};
+
+/**
+ * 일정범위 안이 LockOn이 가능한 액터들을 탐지하여 Target으로 지정하고 플레이어의 카메라를 Target에게 고정하는 ActorComponent 클래스입니다.
+ */
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+class PROJECTT_API UPTTargetingSystemComponent : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:	
+	UPTTargetingSystemComponent();
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+#pragma region Debug
+private:
+	/** 디버그를 최신화 하는 함수입니다. */
+	void UpdateDrawDebug();
+	
+private:
+	/** 디버그의 출력을 결정하는 변수입니다. */
+	UPROPERTY(EditAnywhere, Category = "PTTargetingSystem|Debug")
+	bool bDrawDebug;
+
+	/** Target으로 지정이 가능한 액터(초록색)와 Target(붉은색)을 나타내는 디버그 스피어의 크기입니다. */
+	UPROPERTY(EditAnywhere, Category = "PTTargetingSystem|Debug")
+	float DebugTargetSphereSize;
+
+	/** 디버그 스피어의 정밀도(높을수록 완벽한 구)입니다. */
+	UPROPERTY(EditAnywhere, Category = "PTTargetingSystem|Debug")
+	float DebugTargetSphereSegment;
+#pragma endregion 
+	
+#pragma region PlayerReference
+private:
+	/** 플레이어 레퍼런스들을 초기화하는 함수입니다. */
+	void InitializePlayerReference();
+	
+private:
+	/** 이 Component를 사용하는 Owner를 PTPlayerCharacter 클래스로 캐스팅한 변수입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem|PlayerReference", Meta = (AllowPrivateAccess = "true"))
+	class APTPlayerCharacter* PTPlayerOwner;
+	
+	/** 플레이어가 사용하는 플레이어 컨트롤러입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem|PlayerReference", Meta = (AllowPrivateAccess = "true"))
+	class APlayerController* PlayerController;
+
+	/** 플레이어가 사용하는 플레이어 카메라 매니저입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem|PlayerReference", Meta = (AllowPrivateAccess = "true"))
+	class APlayerCameraManager* PlayerCameraManager;
+#pragma endregion
+
+#pragma region TargetingSystem
+public:
+	/** Target을 LockOn 중인지 나타내는 함수입니다. */
+	bool IsLockOnTarget() const;
+	
+	/** LockOnTarget을 실행하는 함수입니다. */
+	void ExecuteLockOnTarget();
+
+	/** LockOnTarget을 취소하는 함수입니다. */
+	void CancelLockOnTarget();
+
+	/**
+	 * 입력하는 장치와 캐릭터의 카메라 회전 값에 따라 LockOn하는 Target을 변경합니다.
+	 * @param InputMode 입력 장치입니다.
+	 * @param TurnValue 카메라 회전 값입니다.
+	 */
+	void ChangeLockOnTargetForTurnValue(EPTInputMode InputMode, float TurnValue);
+
+private:
+	/** LockOn하는 Target에 카메라를 고정하는 것을 최신화하는 함수입니다. */
+	void UpdateCameraLock();
+	
+	/** Target에 카메라를 고정하는 함수입니다. */
+	void EnableCameraLock();
+
+	/** Target에 고정된 카메라의 고정을 해제하는 함수입니다. */
+	void DisableCameraLock();
+	
+	/**
+	 * 입력받은 인자를 Target으로 설정하는 함수입니다.
+	 * @param NewTarget Target으로 설정할 액터입니다.
+	 */
+	void SetTarget(AActor* NewTarget);
+	
+	/** Target으로 지정이 가능한 액터들을 탐색하고 탐색한 액터들 중 화면의 중앙에 존재하는 액터를 찾아 반환하는 함수입니다. */
+	AActor* FindTarget() const;
+	
+	/** Target으로 지정이 가능한 액터들을 탐색하여 Array에 저장하고 반환하는 함수입니다. */
+	TArray<AActor*> SearchTargetableActors() const;
+
+	/**
+	 * 현재 Target을 기준으로 입력된 방향에 있는 새로운 Target을 찾아 반환하는 함수입니다.
+	 * @param NewTargetDirection 새로운 Target을 찾을 방향입니다.
+	 */
+	AActor* FindDirectionalTarget(EPTTargetDirection NewTargetDirection);
+
+	/**
+	 * 인자로 받은 NewTargetableActor가 플레이어 카메라에서 Target을 기준으로 왼쪽에 있는지 오른쪽에 있는지 반환하는 함수입니다.
+	 * @param NewTargetableActor 위치를 파악할 액터입니다.
+	 */
+	EPTTargetDirection WhichSideOfTarget(AActor* NewTargetableActor) const;
+
+	/**
+	 * 내적을 기준으로 새로운 Target을 가져오는 함수입니다.
+	 * @param TargetableActors Target으로 지정이 가능한 액터들입니다.
+	 * @param bIsLargestDot true일 경우 가장 큰 내적, false일 경우 가장 작은 내적을 기준으로 사용합니다.
+	 */
+	AActor* GetTargetByDotProduct(TArray<AActor*> TargetableActors, bool bIsLargestDot);
+
+	/**
+	 * 플레이어 캐릭터에서 Target으로 향하는 벡터와 플레이어 캐릭터에서 인자로 받은 NewTargetableActor로 향하는 벡터와
+	 * 내적을 계산하는 함수입니다.
+	 * @param NewTargetableActor 벡터를 비교할 액터입니다.
+	 */
+	float CalculateDotProductToTarget(AActor* NewTargetableActor) const;
+	
+	/**
+	 * 인자로 받은 액터의 화면에서의 위치와 해당 액터가 화면에 존재하는지를 반환하는 함수입니다.
+	 * @param SearchActor 화면에서의 위치를 찾을 액터입니다.
+	 * @return Get<0> 인자로 받은 액터의 화면에서의 위치입니다.
+	 * @return Get<1> 인자로 받은 액터가 화면에 존재하는지를 나타냅니다.
+	 */
+	TTuple<FVector2D, bool> GetScreenPositionOfActor(AActor* SearchActor) const;
+	
+	/**
+	 * 화면 상의 액터의 위치가 뷰포트에 존재하는 판단하는 함수입니다.
+	 * @param ActorScreenPosition 화면 상의 액터의 위치입니다.
+	 */
+	bool IsInViewport(FVector2D ActorScreenPosition) const;
+
+	/**
+	 * 인자로 받은 액터를 바라보는 회전 보간 값을 계산하는 함수입니다.
+	 * @param InterpToTarget 바라볼 액터입니다.
+	 */
+	FRotator CalculateInterpToTarget(AActor* InterpToTarget) const;
+	
+private:
+	/** Target을 LockOn 중인지 나타내는 변수입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	bool bIsLockOnTarget;
+	
+	/** LockOn하는 Target입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	AActor* Target;
+	
+	/** Target으로 지정이 가능한 액터들을 탐색하는 최대 탐색 범위입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	float MaxSearchTargetableDistance;
+
+	/** Target을 LockOn할 때 Target을 바라보는 보간속도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	float InterpSpeed;
+
+	/**
+	 * 마지막으로 Target을 변경한 시간입니다.
+	 * 마우스로 Target을 변경할 때 사용합니다.
+	 */
+	UPROPERTY( BlueprintReadWrite, Category = "PTTargetingSystem|MouseInput", Meta = (AllowPrivateAccess = "true"))
+	float LastTimeChangeTarget;
+
+	/**
+	 * 마지막으로 Target을 변경한 이후의 시간입니다.
+	 * 마우스로 Target을 변경할 때 사용합니다.
+	 */
+	UPROPERTY( BlueprintReadWrite, Category = "PTTargetingSystem|MouseInput", Meta = (AllowPrivateAccess = "true"))
+	float TimeSinceLastChangeTarget;
+
+	/**
+	 * Target을 변경하기 위해 필요한 마우스의 최소 회전 입력 값입니다.
+	 * 마우스로 Target을 변경할 때 사용합니다.
+	 */
+	UPROPERTY( BlueprintReadWrite, Category = "PTTargetingSystem|MouseInput", Meta = (AllowPrivateAccess = "true"))
+	float MinMouseValueToChangeTarget;
+
+	/**
+	 * 다른 Target으로 변경하기 전에 딜레이를 주는 시간입니다.
+	 * 너무 빠르게 다른 Target으로 변경하는 것을 방지합니다.
+	 * 마우스로 Target을 변경할 때 사용합니다.
+	 */
+	UPROPERTY( BlueprintReadWrite, Category = "PTTargetingSystem|MouseInput", Meta = (AllowPrivateAccess = "true"))
+	float MinDelayTimeToChangeTarget;
+
+	/**
+	 * 마지막으로 Target을 변경한 후 게임패드의 아날로그 스틱이 중립이 되었는지 나타내는 변수입니다.
+	 * 게임패드의 아날로그 스틱이 중립일 경우 true로 설정됩니다.
+	 * 게임패드로 Target을 변경할 때 사용합니다.
+	 */
+	UPROPERTY( BlueprintReadWrite, Category = "PTTargetingSystem|GamepadInput", Meta = (AllowPrivateAccess = "true"))
+	bool bAnalogNeutralSinceLastSwitchTarget;
+
+	/** 
+	 * Target을 변경하기 위해 필요한 아날로그 스틱의 최소 입력 값입니다.
+	 * 게임패드로 Target을 변경할 때 사용합니다.
+	 */
+	UPROPERTY( BlueprintReadWrite, Category = "PTTargetingSystem|GamepadInput", Meta = (AllowPrivateAccess = "true"))
+	float MinAnalogValueToChangeTarget;
+	
+public:
+	/** Target을 반환하는 함수입니다. */
+	AActor* GetTarget() const;
+#pragma endregion 
+		
+};
