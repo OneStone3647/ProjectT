@@ -8,6 +8,7 @@ UPTTargetAimSystemComponent::UPTTargetAimSystemComponent()
 {
 	// TargetAimSystem
 	UPrimitiveComponent::SetCollisionProfileName(TEXT("Target"));
+	
 	// LockOnWidget
 	LockOnWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("LockOnWidget"));
 	LockOnWidget->SetupAttachment(this);

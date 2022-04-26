@@ -71,8 +71,6 @@ protected:
 #pragma endregion
 
 #pragma region CharacterMovement
-
-#pragma endregion 
 protected:
 	/**
 	 * MoveForward 키를 입력할 경우 호출하는 함수입니다.
@@ -85,6 +83,8 @@ protected:
 	 * @param Value MoveRight의 입력값입니다.
 	 */
 	void MoveRight(float Value);
+#pragma endregion
+	
 #pragma region TargetingSystem
 protected:
 	/** Target을 LockOn하는 함수입니다. */
@@ -102,4 +102,10 @@ public:
 		return TargetingSystem;
 	}
 #pragma endregion
+
+#pragma region Attack
+protected:
+	/** Target을 죽이는 함수입니다. */
+	void KillTarget();
+#pragma endregion 
 };

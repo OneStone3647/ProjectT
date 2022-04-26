@@ -4,6 +4,7 @@
 #include "PTPlayerCharacter.h"
 #include "Components/PTTargetingSystemComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "PTDummyCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -84,6 +85,8 @@ void APTPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &APTPlayerCharacter::Jump);
 	
 	PlayerInputComponent->BindAction("TargetLockOn", IE_Pressed, this, &APTPlayerCharacter::ExecuteLockOnTarget);
+
+	PlayerInputComponent->BindAction("KillTarget", IE_Pressed, this, &APTPlayerCharacter::KillTarget);
 }
 
 #pragma region Camera
@@ -164,6 +167,20 @@ void APTPlayerCharacter::ExecuteLockOnTarget()
 	else
 	{
 		TargetingSystem->CancelLockOnTarget();
+	}
+}
+#pragma endregion 
+
+#pragma region Kill
+void APTPlayerCharacter::KillTarget()
+{
+	if(TargetingSystem->IsLockOnTarget() == true)
+	{
+		APTDummyCharacter* DummyCharacter = Cast<APTDummyCharacter>(TargetingSystem->GetTarget());
+		if(IsValid(DummyCharacter) == true)
+		{
+			DummyCharacter->Dead();
+		}
 	}
 }
 #pragma endregion 

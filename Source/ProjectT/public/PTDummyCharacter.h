@@ -25,9 +25,11 @@ public:
 	/** 캐릭터가 사망했는지 판별하는 함수입니다. */
 	bool IsDead() const;
 
-protected:
-	/** 캐릭터가 사망했을 때 호출하는 함수입니다. */
-	virtual void Dead();
+	/**
+	 * 캐릭터가 사망했을 때 호출하는 함수입니다.
+	 * 캐릭터 매쉬의 CollisionProfile을 Ragdoll로 설정합니다.
+	 */
+	void Dead();
 #pragma endregion 
 
 #pragma region TargetAimSystem

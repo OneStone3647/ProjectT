@@ -5,6 +5,7 @@
 #include "Components/PTTargetAimSystemComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 APTDummyCharacter::APTDummyCharacter()
 {
@@ -37,7 +38,9 @@ bool APTDummyCharacter::IsDead() const
 void APTDummyCharacter::Dead()
 {
 	bIsDead = true;
-	SetActorEnableCollision(false);
+	GetMesh()->SetSimulatePhysics(true);
+	GetCharacterMovement()->DisableMovement();
+	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
 }
 
 void APTDummyCharacter::SelectedTarget(bool bFlag)

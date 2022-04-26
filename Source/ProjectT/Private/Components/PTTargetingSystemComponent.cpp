@@ -337,6 +337,7 @@ AActor* UPTTargetingSystemComponent::FindDirectionalTarget(EPTTargetDirection Ne
 		}
 	}
 
+	// 두 벡터가 이루는 각이 클수록 두 벡터의 내적은 작습니다.
 	switch(NewTargetDirection)
 	{
 	case EPTTargetDirection::TargetDirection_Left:
@@ -442,7 +443,7 @@ float UPTTargetingSystemComponent::CalculateDotProductToTarget(AActor* NewTarget
 																					Target->GetActorLocation());
 	const FVector NewTargetableActorDirection = UKismetMathLibrary::GetDirectionUnitVector(GetOwner()->GetActorLocation(),
 																							NewTargetableActor->GetActorLocation());
-	
+
 	return UKismetMathLibrary::Dot_VectorVector(TargetActorDirection, NewTargetableActorDirection);
 }
 
