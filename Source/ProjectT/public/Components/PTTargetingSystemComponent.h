@@ -116,8 +116,12 @@ private:
 	/** Target으로 지정이 가능한 액터들을 탐색하고 탐색한 액터들 중 화면의 중앙에 존재하는 액터를 찾아 반환하는 함수입니다. */
 	AActor* FindTarget() const;
 	
-	/** Target으로 지정이 가능한 액터들을 탐색하여 Array에 저장하고 반환하는 함수입니다. */
-	TArray<AActor*> SearchTargetableActors() const;
+	/**
+	 * Target으로 지정이 가능한 액터들을 탐색하여 Array에 저장하고 반환하는 함수입니다.
+	 * @param bInScreenPosition true일 경우 화면 안에 존재하는 액터들만 탐색합니다. false일 경우 탐색범위 내에 있는 모든 액터를 탐색합니다.
+	 * @return Target으로 지정이 가능한 액터들을 저장한 Array입니다.
+	 */
+	TArray<AActor*> SearchTargetableActors(bool bInScreenPosition = true) const;
 
 	/**
 	 * 현재 Target을 기준으로 입력된 방향에 있는 새로운 Target을 찾아 반환하는 함수입니다.
@@ -169,6 +173,10 @@ private:
 	/** Target을 LockOn 중인지 나타내는 변수입니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
 	bool bIsLockOnTarget;
+
+	/** 카메라를 Target에 고정할 것인지 나타내는 변수입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	bool bLockOnCamera;
 	
 	/** LockOn하는 Target입니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
