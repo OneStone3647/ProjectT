@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "PTPlayerCharacter.generated.h"
 
+enum class EPTTargetDirection : uint8;
+
 UCLASS()
 class PROJECTT_API APTPlayerCharacter : public ACharacter
 {
@@ -89,11 +91,27 @@ protected:
 protected:
 	/** Target을 LockOn하는 함수입니다. */
 	void ExecuteLockOnTarget();
+	
+	/** TargetingSystem의 bLockOnCamera를 토글하는 함수입니다. */
+	void ToggleLockOnCamera();
+
+	/**
+	 * 입력받은 인자로 bReadyChangeTarget변수를 설정하는 함수입니다.
+	 * @param bFlag bReadyChangeTarget을 설정할 매개변수입니다.
+	 */
+	void SetReadyChangeTarget(bool bFlag);
+
+	/** TargetingSystem의 bDrawDebug를 토글하는 함수입니다. */
+	void ToggleDrawDebug();
 
 protected:
 	/** 일정범위 안이 LockOn이 가능한 Actor들을 탐지하여 Target으로 지정하고 플레이어의 카메라를 Target에게 고정하는 ActorComponent 클래스입니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TargetingSystem")
 	class UPTTargetingSystemComponent* TargetingSystem;
+
+	/** TargetingSystem의 bLockOnCamera가 false일 경우 Target을 변경할 때 활성화 시켜야하는 변수입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "TargetingSystem")
+	bool bReadyChangeTarget;
 
 public:
 	/** TargetingSystem을 반환하는 함수입니다. */

@@ -55,6 +55,7 @@ APTPlayerCharacter::APTPlayerCharacter()
 	
 	// TargetingSystem
 	TargetingSystem = CreateDefaultSubobject<UPTTargetingSystemComponent>(TEXT("TargetingSystem"));
+	bReadyChangeTarget = false;
 }
 
 void APTPlayerCharacter::BeginPlay()
@@ -87,12 +88,20 @@ void APTPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PlayerInputComponent->BindAction("TargetLockOn", IE_Pressed, this, &APTPlayerCharacter::ExecuteLockOnTarget);
 
 	PlayerInputComponent->BindAction("KillTarget", IE_Pressed, this, &APTPlayerCharacter::KillTarget);
+
+	PlayerInputComponent->BindAction("ToggleLockOnCamera", IE_Pressed, this, &APTPlayerCharacter::ToggleLockOnCamera);
+
+	PlayerInputComponent->BindAction<TDelegate<void(bool)>>("ReadyChangeTarget", IE_Pressed, this, &APTPlayerCharacter::SetReadyChangeTarget, true);
+	PlayerInputComponent->BindAction<TDelegate<void(bool)>>("ReadyChangeTarget", IE_Released, this, &APTPlayerCharacter::SetReadyChangeTarget, false);
+
+	PlayerInputComponent->BindAction("ToggleDrawDebug", IE_Pressed, this, &APTPlayerCharacter::ToggleDrawDebug);
 }
 
 #pragma region Camera
 void APTPlayerCharacter::Turn(float Value)
 {
-	if(TargetingSystem->IsLockOnTarget() == true && Value != 0.0f)
+	// LockOnTarget 상태일 때는 Target을 입력방향에 존재하는 Target으로 변경하는 함수를 싱행합니다.
+	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsLockOnCamera() == true || (TargetingSystem->IsLockOnCamera() == false && bReadyChangeTarget)) && Value != 0.0f)
 	{
 		TargetingSystem->ChangeLockOnTargetForTurnValue(EPTInputMode::InputMode_Mouse, Value);
 	}
@@ -104,7 +113,7 @@ void APTPlayerCharacter::Turn(float Value)
 
 void APTPlayerCharacter::LookUp(float Value)
 {
-	if(TargetingSystem->IsLockOnTarget() == false)
+	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsLockOnTarget() == true && TargetingSystem->IsLockOnCamera() == false && !bReadyChangeTarget))
 	{
 		AddControllerPitchInput(Value);
 	}
@@ -112,7 +121,8 @@ void APTPlayerCharacter::LookUp(float Value)
 
 void APTPlayerCharacter::TurnRate(float Rate)
 {
-	if(TargetingSystem->IsLockOnTarget() == true && Rate != 0.0f)
+	// LockOnTarget 상태일 때는 Target을 입력방향에 존재하는 Target으로 변경하는 함수를 싱행합니다.
+	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsLockOnCamera() == true || (TargetingSystem->IsLockOnCamera() == false && bReadyChangeTarget)) && Rate != 0.0f)
 	{
 		TargetingSystem->ChangeLockOnTargetForTurnValue(EPTInputMode::InputMode_Gamepad, Rate);		
 	}
@@ -124,7 +134,7 @@ void APTPlayerCharacter::TurnRate(float Rate)
 
 void APTPlayerCharacter::LookUpRate(float Rate)
 {
-	if(TargetingSystem->IsLockOnTarget() == false)
+	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsLockOnTarget() == true &&TargetingSystem->IsLockOnCamera() == false && !bReadyChangeTarget))
 	{
 		AddControllerPitchInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 	}
@@ -167,6 +177,35 @@ void APTPlayerCharacter::ExecuteLockOnTarget()
 	else
 	{
 		TargetingSystem->CancelLockOnTarget();
+	}
+}
+
+void APTPlayerCharacter::ToggleLockOnCamera()
+{
+	if(TargetingSystem->IsLockOnCamera() == true)
+	{
+		TargetingSystem->SetLockOnCamera(false);
+	}
+	else
+	{
+		TargetingSystem->SetLockOnCamera(true);
+	}
+}
+
+void APTPlayerCharacter::SetReadyChangeTarget(bool bFlag)
+{
+	bReadyChangeTarget = bFlag;
+}
+
+void APTPlayerCharacter::ToggleDrawDebug()
+{
+	if(TargetingSystem->IsDrawDebug() == true)
+	{
+		TargetingSystem->SetDrawDebug(false);
+	}
+	else
+	{
+		TargetingSystem->SetDrawDebug(true);
 	}
 }
 #pragma endregion 
