@@ -16,4 +16,9 @@ class PROJECTT_API APTPlayerController : public APlayerController
 
 protected:
 	virtual void BeginPlay() override;
+
+protected:
+	/** 인게임에서 사용하는 InGameHUD입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "InGameHUD", meta = (AllowPrivateAccess = "true"))
+	class UUserWidget* InGameHUD;
 };
