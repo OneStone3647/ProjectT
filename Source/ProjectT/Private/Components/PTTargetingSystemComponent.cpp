@@ -52,6 +52,11 @@ void UPTTargetingSystemComponent::TickComponent(float DeltaTime, ELevelTick Tick
 }
 
 #pragma region Debug
+bool UPTTargetingSystemComponent::IsDrawDebug() const
+{
+	return bDrawDebug;
+}
+
 void UPTTargetingSystemComponent::UpdateDrawDebug()
 {
 	// 탐지하는 범위를 드로우 디버그합니다.
@@ -82,6 +87,11 @@ void UPTTargetingSystemComponent::UpdateDrawDebug()
 		}
 	}
 }
+
+void UPTTargetingSystemComponent::SetDrawDebug(bool bFlag)
+{
+	bDrawDebug = bFlag;
+}
 #pragma endregion 
 
 #pragma region PlayerReference
@@ -102,6 +112,11 @@ void UPTTargetingSystemComponent::InitializePlayerReference()
 bool UPTTargetingSystemComponent::IsLockOnTarget() const
 {
 	return bIsLockOnTarget && IsValid(Target) == true;
+}
+
+bool UPTTargetingSystemComponent::IsLockOnCamera() const
+{
+	return bLockOnCamera;
 }
 
 void UPTTargetingSystemComponent::ExecuteLockOnTarget()
@@ -616,6 +631,11 @@ FRotator UPTTargetingSystemComponent::CalculateInterpToTarget(AActor* InterpToTa
 	}
 	
 	return FRotator::ZeroRotator;
+}
+
+void UPTTargetingSystemComponent::SetLockOnCamera(bool bFlag)
+{
+	bLockOnCamera = bFlag;
 }
 
 AActor* UPTTargetingSystemComponent::GetTarget() const
