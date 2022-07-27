@@ -263,6 +263,10 @@ void UPTTargetingSystemComponent::SetTarget(AActor* NewTarget)
 	{
 		Target = NewTarget;
 	}
+	else
+	{
+		Target = nullptr;
+	}
 }
 
 AActor* UPTTargetingSystemComponent::FindTarget() const
@@ -453,6 +457,7 @@ AActor* UPTTargetingSystemComponent::FindDirectionalTarget(EPTTargetDirection Ne
 EPTTargetDirection UPTTargetingSystemComponent::WhichSideOfTarget(AActor* NewTargetableActor) const
 {
 	// 카메라를 Target에게 고정하는 LockOn일 경우
+	// Target과 플레이어의 내적을 기준으로 구분합니다.
 	if(bLockOnCamera)
 	{
 		const FVector TargetActorDirection = UKismetMathLibrary::GetDirectionUnitVector(PlayerCameraManager->GetCameraLocation(),
@@ -471,6 +476,7 @@ EPTTargetDirection UPTTargetingSystemComponent::WhichSideOfTarget(AActor* NewTar
 	}
 
 	// 카메라를 Target에게 고정하지 않는 LockOn일 경우
+	// 화면을 기준으로 구분합니다.
 	const float TargetDot = CalculateDotProductToTarget(Target);
 	const float NewTargetDot = CalculateDotProductToTarget(NewTargetableActor);
 
