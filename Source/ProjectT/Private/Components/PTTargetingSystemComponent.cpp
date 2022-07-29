@@ -198,35 +198,21 @@ void UPTTargetingSystemComponent::UpdateCameraLock()
 	{
 		if(IsValid(Target) == true && PTPlayerOwner->GetDistanceTo(Target) <= MaxSearchTargetableDistance)
 		{
-			// 카메라를 Target에게 고정하는 LockOn일 경우
-			if(bLockOnCamera)
+			// Target이 살아있는 동안 카메라가 Target을 바라보도록 고정합니다.
+			APTDummyCharacter* TargetPTDummyCharacter = Cast<APTDummyCharacter>(Target);
+			if(IsValid(TargetPTDummyCharacter) == true && TargetPTDummyCharacter->IsDead() == false)
 			{
-				// Target이 살아있는 동안 카메라가 Target을 바라보도록 고정합니다.
-				APTDummyCharacter* TargetPTDummyCharacter = Cast<APTDummyCharacter>(Target);
-				if(IsValid(TargetPTDummyCharacter) == true && TargetPTDummyCharacter->IsDead() == false)
+				if(PlayerController && bLockOnCamera)
 				{
-					if(PlayerController)
-					{
-						const FRotator InterpToTarget = CalculateInterpToTarget(Target);
-						PlayerController->SetControlRotation(InterpToTarget);
-					}
-				}
-				else
-				{
-					// Target이 사망했을 경우 다음 Target을 찾습니다.
-					CancelLockOnTarget();
-					ExecuteLockOnTarget();
+					const FRotator InterpToTarget = CalculateInterpToTarget(Target);
+					PlayerController->SetControlRotation(InterpToTarget);
 				}
 			}
 			else
 			{
 				// Target이 사망했을 경우 다음 Target을 찾습니다.
-				APTDummyCharacter* TargetPTDummyCharacter = Cast<APTDummyCharacter>(Target);
-				if(IsValid(TargetPTDummyCharacter) == true && TargetPTDummyCharacter->IsDead() == true)
-				{
-					CancelLockOnTarget();
-					ExecuteLockOnTarget();
-				}
+				CancelLockOnTarget();
+				ExecuteLockOnTarget();
 			}
 		}
 		else
@@ -424,20 +410,24 @@ AActor* UPTTargetingSystemComponent::FindDirectionalTarget(EPTTargetDirection Ne
 		case EPTTargetDirection::TargetDirection_Left:
 			if(LeftTargetableActors.Num() > 0)
 			{
+				// 왼쪽에서 내적이 가장 큰 Target
 				NewTarget = GetTargetByDotProduct(LeftTargetableActors, true);
 			}
 			else
 			{
+				// 오른쪽에서 내적이 가장 큰 Target
 				NewTarget = GetTargetByDotProduct(RightTargetableActors, true);
 			}
 			break;
 		case EPTTargetDirection::TargetDirection_Right:
 			if(RightTargetableActors.Num() > 0)
 			{
+				// 오른쪽에서 내적이 가장 작은 Target
 				NewTarget = GetTargetByDotProduct(RightTargetableActors, false);
 			}
 			else
 			{
+				// 왼쪽에서 내적이 가장 작은 Target
 				NewTarget = GetTargetByDotProduct(LeftTargetableActors, false);
 			}
 			break;
@@ -499,71 +489,34 @@ AActor* UPTTargetingSystemComponent::GetTargetByDotProduct(TArray<AActor*> Targe
 		return nullptr;
 	}
 
-	// 카메라를 Target에게 고정하는 LockOn일 경우
-	if(bLockOnCamera)
+	for(AActor* TargetableActor : TargetableActors)
 	{
-		for(AActor* TargetableActor : TargetableActors)
+		if(ArrayIndex == 0)
 		{
-			if(ArrayIndex == 0)
+			DotProduct = CalculateDotProductToTarget(TargetableActor);
+			NewTarget = TargetableActor;
+		}
+		else
+		{
+			if(bIsLargestDot)
 			{
-				DotProduct = CalculateDotProductToTarget(TargetableActor);
-				NewTarget = TargetableActor;
+				if(CalculateDotProductToTarget(TargetableActor) > DotProduct)
+				{
+					DotProduct = CalculateDotProductToTarget(TargetableActor);
+					NewTarget = TargetableActor;
+				}
 			}
 			else
 			{
-				if(bIsLargestDot)
+				if(CalculateDotProductToTarget(TargetableActor) < DotProduct)
 				{
-					if(CalculateDotProductToTarget(TargetableActor) > DotProduct)
-					{
-						DotProduct = CalculateDotProductToTarget(TargetableActor);
-						NewTarget = TargetableActor;
-					}
-				}
-				else
-				{
-					if(CalculateDotProductToTarget(TargetableActor) < DotProduct)
-					{
-						DotProduct = CalculateDotProductToTarget(TargetableActor);
-						NewTarget = TargetableActor;
-					}
+					DotProduct = CalculateDotProductToTarget(TargetableActor);
+					NewTarget = TargetableActor;
 				}
 			}
-
-			ArrayIndex++;
 		}
-	}
-	// 카메라를 Target에게 고정하지 않는 LockOn일 경우
-	else
-	{
-		for(AActor* TargetableActor : TargetableActors)
-		{
-			if(ArrayIndex == 0)
-			{
-				DotProduct = CalculateDotProductToTarget(TargetableActor);
-				NewTarget = TargetableActor;
-			}
-			else
-			{
-				if(bIsLargestDot)
-				{
-					if(CalculateDotProductToTarget(TargetableActor) > DotProduct)
-					{
-						DotProduct = CalculateDotProductToTarget(TargetableActor);
-						NewTarget = TargetableActor;
-					}
-				}
-				else
-				{
-					if(CalculateDotProductToTarget(TargetableActor) < DotProduct)
-					{
-						DotProduct = CalculateDotProductToTarget(TargetableActor);
-						NewTarget = TargetableActor;
-					}
-				}
-			}
 
-			ArrayIndex++;
-		}
+		ArrayIndex++;
 	}
 
 	return NewTarget;
