@@ -18,13 +18,14 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
-public:	
 	virtual void Tick(float DeltaTime) override;
-
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 #pragma region Camera
+public:
+	/** 카메라가 움직이는지 나타내는 함수입니다. */
+	bool IsMoveCamera() const;
+	
 protected:
 	/**
 	 * 마우스 사용할 때 사용하는 카메라 좌우 회전 함수입니다.
@@ -58,6 +59,22 @@ protected:
 	/** 캐릭터 뒤에서 따라오는 카메라입니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class UCameraComponent* FollowCamera;
+	
+	/** 마우스를 사용할 때 카메라가 좌우 회전을 하는지 나타내는 변수입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	bool bTurnMoveCamera;
+
+	/** 마우스를 사용할 때 카메라가 상하 회전을 하는지 나타내는 변수입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	bool bLookUpMoveCamera;
+
+	/** 게임패드를 사용할 때 카메라가 좌우 회전을 하는지 나타내는 변수입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	bool bTurnRateMoveCamera;
+
+	/** 게임패드를 사용할 때 카메라가 상하 회전을 하는지 나타내는 변수입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	bool bLookUpRateMoveCamera;
 
 	/** 카메라가 캐릭터 뒤에서 떨어져서 따라오는 거리입니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")

@@ -114,7 +114,9 @@ public:
 
 private:
 	/** LockOn하는 Target에 카메라를 고정하는 것을 최신화하는 함수입니다. */
-	void UpdateCameraLock();
+	void UpdateCameraLock(float DeltaTime);
+
+	void UpdateDynamicCameraLock(float DeltaTime);
 	
 	/** Target에 카메라를 고정하는 함수입니다. */
 	void EnableCameraLock();
@@ -172,15 +174,25 @@ private:
 	 */
 	TTuple<FVector2D, bool> GetScreenPositionOfActor(AActor* SearchActor) const;
 	
+	// /**
+	//  * 화면 상의 액터의 위치가 뷰포트에 존재하는 판단하는 함수입니다.
+	//  * @param ActorScreenPosition 화면 상의 액터의 위치입니다.
+	//  */
+	// bool IsInViewport(FVector2D ActorScreenPosition) const;
+
 	/**
-	 * 화면 상의 액터의 위치가 뷰포트에 존재하는 판단하는 함수입니다.
-	 * @param ActorScreenPosition 화면 상의 액터의 위치입니다.
+	 * 화면상의 액터의 위치가 뷰포트에 존재하는지 나타내는 함수입니다.
+	 * ScreenRatio의 값이 0.0f이 아닐 경우 뷰포트 중앙에서 해당 값의 화면크기의 비율만큼의 범위에 액터가 존재하는지 나타냅니다.
+	 * @param ActorScreenPosition 화면에서의 액터의 위치입니다.
+	 * @param ScreenRatio 화면 크기의 비율을 나타내는 값입니다. 0.0f일 경우 뷰포트의 최대크기를 사용하며 0.2f일 경우 중앙에서 뷰포트의 상하좌우를 0.2f 비율만큼 줄인 크기를 사용합니다.
+	 * @return 액터가 뷰포트에 존재하는지 나타냅니다.
 	 */
-	bool IsInViewport(FVector2D ActorScreenPosition) const;
+	bool IsInViewport(FVector2D ActorScreenPosition, float ScreenRatio = 0.0f) const;
 
 	/**
 	 * 인자로 받은 액터를 바라보는 회전 보간 값을 계산하는 함수입니다.
 	 * @param InterpToTarget 바라볼 액터입니다.
+	 * @return 인자로 받은 액터를 바라보는 회전 값입니다.
 	 */
 	FRotator CalculateInterpToTarget(AActor* InterpToTarget) const;
 	
@@ -192,6 +204,15 @@ private:
 	/** 카메라를 Target에 고정할 것인지 나타내는 변수입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
 	bool bLockOnCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	bool bExecuteDynamicCameraLock;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	float ExecuteDyanmicCameraLockScreenRatio;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
+	float StopDynamicCameraLockScreenRatio;
 	
 	/** LockOn하는 Target입니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))

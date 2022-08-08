@@ -21,6 +21,9 @@ UPTTargetingSystemComponent::UPTTargetingSystemComponent()
 	// TargetingSystem
 	bIsLockOnTarget = false;
 	bLockOnCamera = true;
+	bExecuteDynamicCameraLock = false;
+	ExecuteDyanmicCameraLockScreenRatio = 0.1f;
+	StopDynamicCameraLockScreenRatio = 0.2f;
 	Target = nullptr;
 	MaxSearchTargetableDistance = 2000.0f;
 	InterpSpeed = 5.0f;
@@ -43,7 +46,7 @@ void UPTTargetingSystemComponent::TickComponent(float DeltaTime, ELevelTick Tick
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	UpdateCameraLock();
+	UpdateCameraLock(DeltaTime);
 
 	if(bDrawDebug)
 	{
@@ -192,7 +195,7 @@ void UPTTargetingSystemComponent::ChangeLockOnTargetForTurnValue(EPTInputMode In
 	EnableCameraLock();
 }
 
-void UPTTargetingSystemComponent::UpdateCameraLock()
+void UPTTargetingSystemComponent::UpdateCameraLock(float DeltaTime)
 {
 	if(bIsLockOnTarget)
 	{
@@ -202,10 +205,47 @@ void UPTTargetingSystemComponent::UpdateCameraLock()
 			APTDummyCharacter* TargetPTDummyCharacter = Cast<APTDummyCharacter>(Target);
 			if(IsValid(TargetPTDummyCharacter) == true && TargetPTDummyCharacter->IsDead() == false)
 			{
-				if(PlayerController && bLockOnCamera)
+				if(PlayerController)
 				{
-					const FRotator InterpToTarget = CalculateInterpToTarget(Target);
-					PlayerController->SetControlRotation(InterpToTarget);
+					// 카메라를 고정할 경우
+					if(bLockOnCamera)
+					{
+						const FRotator InterpToTarget = CalculateInterpToTarget(TargetPTDummyCharacter);
+						PlayerController->SetControlRotation(InterpToTarget);
+					}
+					// 카메라를 고정하지 않을 경우
+					else
+					{
+						if(PTPlayerOwner->IsMoveCamera() == true)
+						{
+							bExecuteDynamicCameraLock = false;
+						}
+						else
+						{
+							if(bExecuteDynamicCameraLock)
+							{
+								if(IsInViewport(GetScreenPositionOfActor(TargetPTDummyCharacter).Get<0>(), StopDynamicCameraLockScreenRatio) == true)
+								{
+									bExecuteDynamicCameraLock = false;
+								}
+								else
+								{
+									UpdateDynamicCameraLock(DeltaTime);
+								}
+							}
+							else
+							{
+								if(IsInViewport(GetScreenPositionOfActor(TargetPTDummyCharacter).Get<0>(), ExecuteDyanmicCameraLockScreenRatio) == true)
+								{
+									bExecuteDynamicCameraLock = false;
+								}
+								else
+								{
+									bExecuteDynamicCameraLock = true;
+								}
+							}
+						}
+					}
 				}
 			}
 			else
@@ -219,6 +259,18 @@ void UPTTargetingSystemComponent::UpdateCameraLock()
 		{
 			CancelLockOnTarget();
 		}
+	}
+}
+
+void UPTTargetingSystemComponent::UpdateDynamicCameraLock(float DeltaTime)
+{
+	if(Target)
+	{
+		FRotator CurrentRotator = PlayerController->GetControlRotation();
+		FRotator TargetRotator = UKismetMathLibrary::FindLookAtRotation(PTPlayerOwner->GetActorLocation(), Target->GetActorLocation());
+		FRotator InterpRotator = UKismetMathLibrary::RInterpTo(CurrentRotator, TargetRotator, DeltaTime, 1.0f);
+		
+		PlayerController->SetControlRotation(InterpRotator);
 	}
 }
 
@@ -564,12 +616,27 @@ TTuple<FVector2D, bool> UPTTargetingSystemComponent::GetScreenPositionOfActor(AA
 	return MakeTuple(ScreenLocation, bResult);
 }
 
-bool UPTTargetingSystemComponent::IsInViewport(FVector2D ActorScreenPosition) const
+// bool UPTTargetingSystemComponent::IsInViewport(FVector2D ActorScreenPosition) const
+// {
+// 	FVector2D ViewportSize = GEngine->GameViewport->Viewport->GetSizeXY();
+//
+// 	return ActorScreenPosition.X > 0.0f && ActorScreenPosition.Y > 0.0f
+// 			&& ActorScreenPosition.X <= ViewportSize.X && ActorScreenPosition.Y <= ViewportSize.Y;
+// }
+
+bool UPTTargetingSystemComponent::IsInViewport(FVector2D ActorScreenPosition, float ScreenRatio) const
 {
 	FVector2D ViewportSize = GEngine->GameViewport->Viewport->GetSizeXY();
 
-	return ActorScreenPosition.X > 0.0f && ActorScreenPosition.Y > 0.0f
-			&& ActorScreenPosition.X <= ViewportSize.X && ActorScreenPosition.Y <= ViewportSize.Y;
+	// 화면 전체를 사용할 경우
+	if(ScreenRatio == 0.0f)
+	{
+		return ActorScreenPosition.X >= 0.0f && ActorScreenPosition.Y >= 0.0f
+				&& ActorScreenPosition.X <= ViewportSize.X && ActorScreenPosition.Y <= ViewportSize.Y;
+	}
+
+	return ActorScreenPosition.X >= ViewportSize.X * ScreenRatio && ActorScreenPosition.X <= ViewportSize.X * (1.0f - ScreenRatio)
+			&& ActorScreenPosition.Y >= ViewportSize.Y * ScreenRatio && ActorScreenPosition.Y <= ViewportSize.Y * (1.0f - ScreenRatio);
 }
 
 FRotator UPTTargetingSystemComponent::CalculateInterpToTarget(AActor* InterpToTarget) const

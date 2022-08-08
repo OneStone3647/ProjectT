@@ -50,6 +50,10 @@ APTPlayerCharacter::APTPlayerCharacter()
 	FollowCamera->SetRelativeRotation(FRotator(-20.0f, 0.0f, 0.0f));
 
 	// Camera
+	bTurnMoveCamera = false;
+	bLookUpMoveCamera = false;
+	bTurnRateMoveCamera = false;
+	bLookUpRateMoveCamera = false;
 	BaseTurnRate = 45.0f;
 	BaseLookUpRate = 45.0f;
 	
@@ -98,8 +102,22 @@ void APTPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 }
 
 #pragma region Camera
+bool APTPlayerCharacter::IsMoveCamera() const
+{
+	return bTurnMoveCamera || bLookUpMoveCamera || bTurnRateMoveCamera || bLookUpRateMoveCamera;
+}
+
 void APTPlayerCharacter::Turn(float Value)
 {
+	if(Value != 0.0f)
+	{
+		bTurnMoveCamera = true;
+	}
+	else
+	{
+		bTurnMoveCamera = false;
+	}
+	
 	// LockOnTarget 상태일 때는 Target을 입력방향에 존재하는 Target으로 변경하는 함수를 싱행합니다.
 	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsLockOnCamera() == true || (TargetingSystem->IsLockOnCamera() == false && bReadyChangeTarget)) && Value != 0.0f)
 	{
@@ -113,6 +131,15 @@ void APTPlayerCharacter::Turn(float Value)
 
 void APTPlayerCharacter::LookUp(float Value)
 {
+	if(Value != 0.0f)
+	{
+		bLookUpMoveCamera = true;
+	}
+	else
+	{
+		bLookUpMoveCamera = false;
+	}
+	
 	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsLockOnTarget() == true && TargetingSystem->IsLockOnCamera() == false && !bReadyChangeTarget))
 	{
 		AddControllerPitchInput(Value);
@@ -121,6 +148,15 @@ void APTPlayerCharacter::LookUp(float Value)
 
 void APTPlayerCharacter::TurnRate(float Rate)
 {
+	if(Rate != 0.0f)
+	{
+		bTurnRateMoveCamera = true;
+	}
+	else
+	{
+		bTurnRateMoveCamera = false;
+	}
+	
 	// LockOnTarget 상태일 때는 Target을 입력방향에 존재하는 Target으로 변경하는 함수를 싱행합니다.
 	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsLockOnCamera() == true || (TargetingSystem->IsLockOnCamera() == false && bReadyChangeTarget)) && Rate != 0.0f)
 	{
@@ -134,6 +170,15 @@ void APTPlayerCharacter::TurnRate(float Rate)
 
 void APTPlayerCharacter::LookUpRate(float Rate)
 {
+	if(Rate != 0.0f)
+	{
+		bLookUpRateMoveCamera = true;
+	}
+	else
+	{
+		bLookUpRateMoveCamera = false;
+	}
+	
 	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsLockOnTarget() == true &&TargetingSystem->IsLockOnCamera() == false && !bReadyChangeTarget))
 	{
 		AddControllerPitchInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
