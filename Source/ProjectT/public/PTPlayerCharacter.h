@@ -109,8 +109,8 @@ protected:
 	/** Target을 LockOn하는 함수입니다. */
 	void ExecuteLockOnTarget();
 	
-	/** TargetingSystem의 bLockOnCamera를 토글하는 함수입니다. */
-	void ToggleLockOnCamera();
+	/** TargetingSystem의 bDynamicLockOnTarget을 토글하는 함수입니다. */
+	void ToggleDynamicLockOnTarget();
 
 	/**
 	 * 입력받은 인자로 bReadyChangeTarget변수를 설정하는 함수입니다.
