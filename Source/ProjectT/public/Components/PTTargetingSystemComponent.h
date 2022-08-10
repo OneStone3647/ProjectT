@@ -209,10 +209,6 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
 	bool bDynamicLockOnTarget;
 
-	/** DynamicLockOn을 실행하는 화면 비율을 나타내는 변수입니다. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
-	float ExecuteDyanmicCameraLockScreenRatio;
-
 	/** DynamicLockOn을 중지하는 화면 비율을 나타내는 변수입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PTTargetingSystem", Meta = (AllowPrivateAccess = "true"))
 	float StopDynamicCameraLockScreenRatio;

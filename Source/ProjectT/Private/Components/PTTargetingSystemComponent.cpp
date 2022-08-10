@@ -21,7 +21,6 @@ UPTTargetingSystemComponent::UPTTargetingSystemComponent()
 	// TargetingSystem
 	bIsLockOnTarget = false;
 	bDynamicLockOnTarget = false;
-	ExecuteDyanmicCameraLockScreenRatio = 0.1f;
 	StopDynamicCameraLockScreenRatio = 0.2f;
 	Target = nullptr;
 	MaxSearchTargetableDistance = 2000.0f;
