@@ -117,7 +117,7 @@ private:
 	void UpdateCamera(float DeltaTime);
 
 	/** LockOn하는 Target에 카메라를 고정하는 것을 최신화하는 함수입니다. */
-	void UpdateCameraLock(float DeltaTime);
+	void UpdateCameraLock();
 
 	/** LockOn하는 Target에 카메라를 동적으로 고정하는 것을 최신화하는 함수입니다. */
 	void UpdateDynamicCameraLock(float DeltaTime);

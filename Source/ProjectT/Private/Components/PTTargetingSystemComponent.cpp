@@ -214,11 +214,11 @@ void UPTTargetingSystemComponent::UpdateCamera(float DeltaTime)
 	// LockOn일 경우
 	else
 	{
-		UpdateCameraLock(DeltaTime);
+		UpdateCameraLock();
 	}
 }
 
-void UPTTargetingSystemComponent::UpdateCameraLock(float DeltaTime)
+void UPTTargetingSystemComponent::UpdateCameraLock()
 {
 	if(bIsLockOnTarget)
 	{
@@ -628,14 +628,27 @@ bool UPTTargetingSystemComponent::IsInViewport(FVector2D ActorScreenPosition, fl
 	FVector2D ViewportSize = GEngine->GameViewport->Viewport->GetSizeXY();
 
 	// 화면 전체를 사용할 경우
-	if(ScreenRatio == 0.0f)
+	if(ScreenRatio == 0.0f || UKismetMathLibrary::Abs(ScreenRatio) > 1.0f || (ScreenRatio == (1.0f - ScreenRatio)))
 	{
 		return ActorScreenPosition.X >= 0.0f && ActorScreenPosition.Y >= 0.0f
 				&& ActorScreenPosition.X <= ViewportSize.X && ActorScreenPosition.Y <= ViewportSize.Y;
 	}
 
-	return ActorScreenPosition.X >= ViewportSize.X * ScreenRatio && ActorScreenPosition.X <= ViewportSize.X * (1.0f - ScreenRatio)
-			&& ActorScreenPosition.Y >= ViewportSize.Y * ScreenRatio && ActorScreenPosition.Y <= ViewportSize.Y * (1.0f - ScreenRatio);
+	float LargeScreenRatio;
+	float SmallScreenRatio;
+	if(ScreenRatio < (1.0f - ScreenRatio))
+	{
+		LargeScreenRatio = 1.0f - ScreenRatio;
+		SmallScreenRatio = ScreenRatio;
+	}
+	else
+	{
+		LargeScreenRatio = ScreenRatio;
+		SmallScreenRatio = 1.0f - ScreenRatio;
+	}
+	
+	return ActorScreenPosition.X >= ViewportSize.X * SmallScreenRatio && ActorScreenPosition.X <= ViewportSize.X * LargeScreenRatio
+			&& ActorScreenPosition.Y >= ViewportSize.Y * SmallScreenRatio && ActorScreenPosition.Y <= ViewportSize.Y * LargeScreenRatio;
 }
 
 FRotator UPTTargetingSystemComponent::CalculateInterpToTarget(AActor* InterpToTarget) const
