@@ -41,7 +41,10 @@ APTPlayerCharacter::APTPlayerCharacter()
 	SpringArm->SocketOffset = FVector(0.0f, 0.0f, 200.0f);
 	SpringArm->bUsePawnControlRotation = true;										// 컨트롤러를 기준으로 SpringArm을 회전합니다.
 	SpringArm->bEnableCameraLag = true;
+	SpringArm->bEnableCameraRotationLag = true;
 	SpringArm->CameraLagSpeed = 10.0f;
+	SpringArm->CameraRotationLagSpeed = 20.0f;
+	
 
 	// FollowCamera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -50,6 +53,10 @@ APTPlayerCharacter::APTPlayerCharacter()
 	FollowCamera->SetRelativeRotation(FRotator(-20.0f, 0.0f, 0.0f));
 
 	// Camera
+	bTurnMoveCamera = false;
+	bLookUpMoveCamera = false;
+	bTurnRateMoveCamera = false;
+	bLookUpRateMoveCamera = false;
 	BaseTurnRate = 45.0f;
 	BaseLookUpRate = 45.0f;
 	
@@ -89,7 +96,7 @@ void APTPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 	PlayerInputComponent->BindAction("KillTarget", IE_Pressed, this, &APTPlayerCharacter::KillTarget);
 
-	PlayerInputComponent->BindAction("ToggleLockOnCamera", IE_Pressed, this, &APTPlayerCharacter::ToggleLockOnCamera);
+	PlayerInputComponent->BindAction("ToggleDynamicLockOnTarget", IE_Pressed, this, &APTPlayerCharacter::ToggleDynamicLockOnTarget);
 
 	PlayerInputComponent->BindAction<TDelegate<void(bool)>>("ReadyChangeTarget", IE_Pressed, this, &APTPlayerCharacter::SetReadyChangeTarget, true);
 	PlayerInputComponent->BindAction<TDelegate<void(bool)>>("ReadyChangeTarget", IE_Released, this, &APTPlayerCharacter::SetReadyChangeTarget, false);
@@ -98,10 +105,24 @@ void APTPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 }
 
 #pragma region Camera
+bool APTPlayerCharacter::IsMoveCamera() const
+{
+	return bTurnMoveCamera || bLookUpMoveCamera || bTurnRateMoveCamera || bLookUpRateMoveCamera;
+}
+
 void APTPlayerCharacter::Turn(float Value)
 {
+	if(Value != 0.0f)
+	{
+		bTurnMoveCamera = true;
+	}
+	else
+	{
+		bTurnMoveCamera = false;
+	}
+	
 	// LockOnTarget 상태일 때는 Target을 입력방향에 존재하는 Target으로 변경하는 함수를 싱행합니다.
-	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsLockOnCamera() == true || (TargetingSystem->IsLockOnCamera() == false && bReadyChangeTarget)) && Value != 0.0f)
+	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsDynamicLockOnTarget() == false || (TargetingSystem->IsDynamicLockOnTarget() == true && bReadyChangeTarget)) && Value != 0.0f)
 	{
 		TargetingSystem->ChangeLockOnTargetForTurnValue(EPTInputMode::InputMode_Mouse, Value);
 	}
@@ -113,7 +134,16 @@ void APTPlayerCharacter::Turn(float Value)
 
 void APTPlayerCharacter::LookUp(float Value)
 {
-	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsLockOnTarget() == true && TargetingSystem->IsLockOnCamera() == false && !bReadyChangeTarget))
+	if(Value != 0.0f)
+	{
+		bLookUpMoveCamera = true;
+	}
+	else
+	{
+		bLookUpMoveCamera = false;
+	}
+	
+	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsDynamicLockOnTarget() == true && !bReadyChangeTarget))
 	{
 		AddControllerPitchInput(Value);
 	}
@@ -121,8 +151,17 @@ void APTPlayerCharacter::LookUp(float Value)
 
 void APTPlayerCharacter::TurnRate(float Rate)
 {
+	if(Rate != 0.0f)
+	{
+		bTurnRateMoveCamera = true;
+	}
+	else
+	{
+		bTurnRateMoveCamera = false;
+	}
+	
 	// LockOnTarget 상태일 때는 Target을 입력방향에 존재하는 Target으로 변경하는 함수를 싱행합니다.
-	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsLockOnCamera() == true || (TargetingSystem->IsLockOnCamera() == false && bReadyChangeTarget)) && Rate != 0.0f)
+	if(TargetingSystem->IsLockOnTarget() == true && (TargetingSystem->IsDynamicLockOnTarget() == false || (TargetingSystem->IsDynamicLockOnTarget() == true && bReadyChangeTarget)) && Rate != 0.0f)
 	{
 		TargetingSystem->ChangeLockOnTargetForTurnValue(EPTInputMode::InputMode_Gamepad, Rate);		
 	}
@@ -134,7 +173,16 @@ void APTPlayerCharacter::TurnRate(float Rate)
 
 void APTPlayerCharacter::LookUpRate(float Rate)
 {
-	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsLockOnTarget() == true &&TargetingSystem->IsLockOnCamera() == false && !bReadyChangeTarget))
+	if(Rate != 0.0f)
+	{
+		bLookUpRateMoveCamera = true;
+	}
+	else
+	{
+		bLookUpRateMoveCamera = false;
+	}
+	
+	if(TargetingSystem->IsLockOnTarget() == false || (TargetingSystem->IsDynamicLockOnTarget() == true && !bReadyChangeTarget))
 	{
 		AddControllerPitchInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 	}
@@ -180,15 +228,15 @@ void APTPlayerCharacter::ExecuteLockOnTarget()
 	}
 }
 
-void APTPlayerCharacter::ToggleLockOnCamera()
+void APTPlayerCharacter::ToggleDynamicLockOnTarget()
 {
-	if(TargetingSystem->IsLockOnCamera() == true)
+	if(TargetingSystem->IsDynamicLockOnTarget() == true)
 	{
-		TargetingSystem->SetLockOnCamera(false);
+		TargetingSystem->SetDynamicLockOnTarget(false);
 	}
 	else
 	{
-		TargetingSystem->SetLockOnCamera(true);
+		TargetingSystem->SetDynamicLockOnTarget(true);
 	}
 }
 

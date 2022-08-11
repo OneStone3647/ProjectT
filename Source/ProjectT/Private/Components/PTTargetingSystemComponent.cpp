@@ -20,7 +20,8 @@ UPTTargetingSystemComponent::UPTTargetingSystemComponent()
 
 	// TargetingSystem
 	bIsLockOnTarget = false;
-	bLockOnCamera = true;
+	bDynamicLockOnTarget = false;
+	StopDynamicCameraLockScreenRatio = 0.2f;
 	Target = nullptr;
 	MaxSearchTargetableDistance = 2000.0f;
 	InterpSpeed = 5.0f;
@@ -43,8 +44,19 @@ void UPTTargetingSystemComponent::TickComponent(float DeltaTime, ELevelTick Tick
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	UpdateCameraLock();
+	// UpdateCameraLock(DeltaTime);
 
+	// if(bDynamicLockOnTarget)
+	// {
+	// 	UpdateDynamicCameraLock(DeltaTime);
+	// }
+	// else
+	// {
+	// 	UpdateCameraLock(DeltaTime);
+	// }
+
+	UpdateCamera(DeltaTime);
+	
 	if(bDrawDebug)
 	{
 		UpdateDrawDebug();
@@ -114,9 +126,9 @@ bool UPTTargetingSystemComponent::IsLockOnTarget() const
 	return bIsLockOnTarget && IsValid(Target) == true;
 }
 
-bool UPTTargetingSystemComponent::IsLockOnCamera() const
+bool UPTTargetingSystemComponent::IsDynamicLockOnTarget() const
 {
-	return bLockOnCamera;
+	return bDynamicLockOnTarget;
 }
 
 void UPTTargetingSystemComponent::ExecuteLockOnTarget()
@@ -192,6 +204,20 @@ void UPTTargetingSystemComponent::ChangeLockOnTargetForTurnValue(EPTInputMode In
 	EnableCameraLock();
 }
 
+void UPTTargetingSystemComponent::UpdateCamera(float DeltaTime)
+{
+	// DynamicLockOn일 경우
+	if(bDynamicLockOnTarget)
+	{
+		UpdateDynamicCameraLock(DeltaTime);
+	}
+	// LockOn일 경우
+	else
+	{
+		UpdateCameraLock();
+	}
+}
+
 void UPTTargetingSystemComponent::UpdateCameraLock()
 {
 	if(bIsLockOnTarget)
@@ -200,12 +226,45 @@ void UPTTargetingSystemComponent::UpdateCameraLock()
 		{
 			// Target이 살아있는 동안 카메라가 Target을 바라보도록 고정합니다.
 			APTDummyCharacter* TargetPTDummyCharacter = Cast<APTDummyCharacter>(Target);
-			if(IsValid(TargetPTDummyCharacter) == true && TargetPTDummyCharacter->IsDead() == false)
+			if(IsValid(TargetPTDummyCharacter) == true && TargetPTDummyCharacter->IsDead() == false && PlayerController)
 			{
-				if(PlayerController && bLockOnCamera)
+				const FRotator InterpToTarget = CalculateInterpToTarget(TargetPTDummyCharacter);
+				PlayerController->SetControlRotation(InterpToTarget);
+			}
+			else
+			{
+				// Target이 사망했을 경우 다음 Target을 찾습니다.
+				CancelLockOnTarget();
+				ExecuteLockOnTarget();
+			}
+		}
+		else
+		{
+			CancelLockOnTarget();
+		}
+	}
+}
+
+void UPTTargetingSystemComponent::UpdateDynamicCameraLock(float DeltaTime)
+{
+	if(bIsLockOnTarget)
+	{
+		if(IsValid(Target) == true && PTPlayerOwner->GetDistanceTo(Target) <= MaxSearchTargetableDistance)
+		{
+			// Target이 살아있는 동안 카메라가 Target을 바라보도록 고정합니다.
+			APTDummyCharacter* TargetPTDummyCharacter = Cast<APTDummyCharacter>(Target);
+			if(IsValid(TargetPTDummyCharacter) == true && TargetPTDummyCharacter->IsDead() == false && PlayerController)
+			{
+				if(PTPlayerOwner->IsMoveCamera() == false)
 				{
-					const FRotator InterpToTarget = CalculateInterpToTarget(Target);
-					PlayerController->SetControlRotation(InterpToTarget);
+					if(IsInViewport(GetScreenPositionOfActor(TargetPTDummyCharacter).Get<0>(), StopDynamicCameraLockScreenRatio) == false)
+					{
+						const FRotator CurrentRotator = PlayerController->GetControlRotation();
+						const FRotator TargetRotator = UKismetMathLibrary::FindLookAtRotation(PTPlayerOwner->GetActorLocation(), Target->GetActorLocation());
+						const FRotator InterpRotator = UKismetMathLibrary::RInterpTo(CurrentRotator, TargetRotator, DeltaTime, 1.0f);
+							
+						PlayerController->SetControlRotation(InterpRotator);
+					}
 				}
 			}
 			else
@@ -368,8 +427,41 @@ AActor* UPTTargetingSystemComponent::FindDirectionalTarget(EPTTargetDirection Ne
 		}
 	}
 
-	// 카메라를 Target에게 고정하는 LockOn일 경우
-	if(bLockOnCamera)
+	// DynamicLockOn일 경우
+	if(bDynamicLockOnTarget)
+	{
+		switch(NewTargetDirection)
+		{
+		case EPTTargetDirection::TargetDirection_Left:
+			if(LeftTargetableActors.Num() > 0)
+			{
+				// 왼쪽에서 내적이 가장 큰 Target
+				NewTarget = GetTargetByDotProduct(LeftTargetableActors, true);
+			}
+			else
+			{
+				// 오른쪽에서 내적이 가장 큰 Target
+				NewTarget = GetTargetByDotProduct(RightTargetableActors, true);
+			}
+			break;
+		case EPTTargetDirection::TargetDirection_Right:
+			if(RightTargetableActors.Num() > 0)
+			{
+				// 오른쪽에서 내적이 가장 작은 Target
+				NewTarget = GetTargetByDotProduct(RightTargetableActors, false);
+			}
+			else
+			{
+				// 왼쪽에서 내적이 가장 작은 Target
+				NewTarget = GetTargetByDotProduct(LeftTargetableActors, false);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	// LockOn일 경우
+	else
 	{
 		// 두 벡터가 이루는 각이 클수록 두 벡터의 내적은 작습니다.
 		switch(NewTargetDirection)
@@ -402,39 +494,6 @@ AActor* UPTTargetingSystemComponent::FindDirectionalTarget(EPTTargetDirection Ne
 			break;
 		}
 	}
-	// 카메라를 Target에게 고정하지 않는 LockOn일 경우
-	else
-	{
-		switch(NewTargetDirection)
-		{
-		case EPTTargetDirection::TargetDirection_Left:
-			if(LeftTargetableActors.Num() > 0)
-			{
-				// 왼쪽에서 내적이 가장 큰 Target
-				NewTarget = GetTargetByDotProduct(LeftTargetableActors, true);
-			}
-			else
-			{
-				// 오른쪽에서 내적이 가장 큰 Target
-				NewTarget = GetTargetByDotProduct(RightTargetableActors, true);
-			}
-			break;
-		case EPTTargetDirection::TargetDirection_Right:
-			if(RightTargetableActors.Num() > 0)
-			{
-				// 오른쪽에서 내적이 가장 작은 Target
-				NewTarget = GetTargetByDotProduct(RightTargetableActors, false);
-			}
-			else
-			{
-				// 왼쪽에서 내적이 가장 작은 Target
-				NewTarget = GetTargetByDotProduct(LeftTargetableActors, false);
-			}
-			break;
-		default:
-			break;
-		}
-	}
 
 	if(IsValid(NewTarget) == true)
 	{
@@ -446,36 +505,36 @@ AActor* UPTTargetingSystemComponent::FindDirectionalTarget(EPTTargetDirection Ne
 
 EPTTargetDirection UPTTargetingSystemComponent::WhichSideOfTarget(AActor* NewTargetableActor) const
 {
-	// 카메라를 Target에게 고정하는 LockOn일 경우
-	// Target과 플레이어의 내적을 기준으로 구분합니다.
-	if(bLockOnCamera)
-	{
-		const FVector TargetActorDirection = UKismetMathLibrary::GetDirectionUnitVector(PlayerCameraManager->GetCameraLocation(),
-																						Target->GetActorLocation());
-		const FVector NewTargetableActorDirection = UKismetMathLibrary::GetDirectionUnitVector(PlayerCameraManager->GetCameraLocation(),
-																								NewTargetableActor->GetActorLocation());
-		const FVector NewDirection = UKismetMathLibrary::Cross_VectorVector(TargetActorDirection, NewTargetableActorDirection);
-		const float NewDot = UKismetMathLibrary::Dot_VectorVector(NewDirection, GetOwner()->GetActorUpVector());
-
-		if(NewDot >= 0.0f)
-		{
-			return EPTTargetDirection::TargetDirection_Right;
-		}
-	
-		return EPTTargetDirection::TargetDirection_Left;
-	}
-
-	// 카메라를 Target에게 고정하지 않는 LockOn일 경우
+	// DynamicLockOn일 경우
 	// 화면을 기준으로 구분합니다.
-	const float TargetDot = CalculateDotProductToTarget(Target);
-	const float NewTargetDot = CalculateDotProductToTarget(NewTargetableActor);
-
-	if(TargetDot >= NewTargetDot)
+	if(bDynamicLockOnTarget)
 	{
-		return EPTTargetDirection::TargetDirection_Left;
-	}
+		const float TargetDot = CalculateDotProductToTarget(Target);
+		const float NewTargetDot = CalculateDotProductToTarget(NewTargetableActor);
 
-	return EPTTargetDirection::TargetDirection_Right;
+		if(TargetDot >= NewTargetDot)
+		{
+			return EPTTargetDirection::TargetDirection_Left;
+		}
+
+		return EPTTargetDirection::TargetDirection_Right;
+	}
+	
+	// LockOn일 경우
+	// Target과 플레이어의 내적을 기준으로 구분합니다.
+	const FVector TargetActorDirection = UKismetMathLibrary::GetDirectionUnitVector(PlayerCameraManager->GetCameraLocation(),
+																					Target->GetActorLocation());
+	const FVector NewTargetableActorDirection = UKismetMathLibrary::GetDirectionUnitVector(PlayerCameraManager->GetCameraLocation(),
+																							NewTargetableActor->GetActorLocation());
+	const FVector NewDirection = UKismetMathLibrary::Cross_VectorVector(TargetActorDirection, NewTargetableActorDirection);
+	const float NewDot = UKismetMathLibrary::Dot_VectorVector(NewDirection, GetOwner()->GetActorUpVector());
+
+	if(NewDot >= 0.0f)
+	{
+		return EPTTargetDirection::TargetDirection_Right;
+	}
+	
+	return EPTTargetDirection::TargetDirection_Left;
 }
 
 AActor* UPTTargetingSystemComponent::GetTargetByDotProduct(TArray<AActor*> TargetableActors, bool bIsLargestDot)
@@ -529,18 +588,8 @@ float UPTTargetingSystemComponent::CalculateDotProductToTarget(AActor* NewTarget
 		return 0.0f;
 	}
 	
-	// 카메라를 Target에게 고정하는 LockOn일 경우
-	if(bLockOnCamera)
-	{
-		const FVector TargetActorDirection = UKismetMathLibrary::GetDirectionUnitVector(GetOwner()->GetActorLocation(),
-																						Target->GetActorLocation());
-		const FVector NewTargetableActorDirection = UKismetMathLibrary::GetDirectionUnitVector(GetOwner()->GetActorLocation(),
-																								NewTargetableActor->GetActorLocation());
-
-		return UKismetMathLibrary::Dot_VectorVector(TargetActorDirection, NewTargetableActorDirection);
-	}
-	// 카메라를 Target에게 고정하지 않는 LockOn일 경우
-	else
+	// DynamicLockOn일 경우
+	if(bDynamicLockOnTarget)
 	{
 		if(PlayerCameraManager)
 		{
@@ -550,6 +599,16 @@ float UPTTargetingSystemComponent::CalculateDotProductToTarget(AActor* NewTarget
 
 			return UKismetMathLibrary::Dot_VectorVector(PlayerCameraManager->GetActorUpVector(), CrossProduct);
 		}
+	}
+	// ockOn일 경우
+	else
+	{
+		const FVector TargetActorDirection = UKismetMathLibrary::GetDirectionUnitVector(GetOwner()->GetActorLocation(),
+																						Target->GetActorLocation());
+		const FVector NewTargetableActorDirection = UKismetMathLibrary::GetDirectionUnitVector(GetOwner()->GetActorLocation(),
+																								NewTargetableActor->GetActorLocation());
+
+		return UKismetMathLibrary::Dot_VectorVector(TargetActorDirection, NewTargetableActorDirection);
 	}	
 
 	return 0.0f;
@@ -564,12 +623,32 @@ TTuple<FVector2D, bool> UPTTargetingSystemComponent::GetScreenPositionOfActor(AA
 	return MakeTuple(ScreenLocation, bResult);
 }
 
-bool UPTTargetingSystemComponent::IsInViewport(FVector2D ActorScreenPosition) const
+bool UPTTargetingSystemComponent::IsInViewport(FVector2D ActorScreenPosition, float ScreenRatio) const
 {
 	FVector2D ViewportSize = GEngine->GameViewport->Viewport->GetSizeXY();
 
-	return ActorScreenPosition.X > 0.0f && ActorScreenPosition.Y > 0.0f
-			&& ActorScreenPosition.X <= ViewportSize.X && ActorScreenPosition.Y <= ViewportSize.Y;
+	// 화면 전체를 사용할 경우
+	if(ScreenRatio == 0.0f || UKismetMathLibrary::Abs(ScreenRatio) > 1.0f || (ScreenRatio == (1.0f - ScreenRatio)))
+	{
+		return ActorScreenPosition.X >= 0.0f && ActorScreenPosition.Y >= 0.0f
+				&& ActorScreenPosition.X <= ViewportSize.X && ActorScreenPosition.Y <= ViewportSize.Y;
+	}
+
+	float LargeScreenRatio;
+	float SmallScreenRatio;
+	if(ScreenRatio < (1.0f - ScreenRatio))
+	{
+		LargeScreenRatio = 1.0f - ScreenRatio;
+		SmallScreenRatio = ScreenRatio;
+	}
+	else
+	{
+		LargeScreenRatio = ScreenRatio;
+		SmallScreenRatio = 1.0f - ScreenRatio;
+	}
+	
+	return ActorScreenPosition.X >= ViewportSize.X * SmallScreenRatio && ActorScreenPosition.X <= ViewportSize.X * LargeScreenRatio
+			&& ActorScreenPosition.Y >= ViewportSize.Y * SmallScreenRatio && ActorScreenPosition.Y <= ViewportSize.Y * LargeScreenRatio;
 }
 
 FRotator UPTTargetingSystemComponent::CalculateInterpToTarget(AActor* InterpToTarget) const
@@ -592,9 +671,9 @@ FRotator UPTTargetingSystemComponent::CalculateInterpToTarget(AActor* InterpToTa
 	return FRotator::ZeroRotator;
 }
 
-void UPTTargetingSystemComponent::SetLockOnCamera(bool bFlag)
+void UPTTargetingSystemComponent::SetDynamicLockOnTarget(bool bFlag)
 {
-	bLockOnCamera = bFlag;
+	bDynamicLockOnTarget = bFlag;
 }
 
 AActor* UPTTargetingSystemComponent::GetTarget() const
